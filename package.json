@@ -1,6 +1,6 @@
 {
   "name": "@kepello/nodegraph-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP exposure for @kepello/nodegraph: graph-layer tools and federation tools as composable Tool registrations.",
   "type": "module",
   "main": "dist/index.js",

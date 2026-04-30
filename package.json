@@ -1,0 +1,58 @@
+{
+  "name": "@kepello/nodegraph-mcp",
+  "version": "0.1.0",
+  "description": "MCP exposure for @kepello/nodegraph: graph-layer tools and federation tools as composable Tool registrations.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./federation": {
+      "types": "./dist/federation/index.d.ts",
+      "default": "./dist/federation/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import tsx 'src/**/*.test.ts'",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@kepello/nodegraph": "^0.2.2",
+    "@kepello/nodegraph-federation": "^0.1.1",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "peerDependenciesMeta": {
+    "@kepello/nodegraph-federation": {
+      "optional": true
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@kepello/nodegraph": "^0.2.2",
+    "@kepello/nodegraph-federation": "^0.1.1",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "zod": "^3.22.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kepello/nodegraph-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Carl Lance"
+}

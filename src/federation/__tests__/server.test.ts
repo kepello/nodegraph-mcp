@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import type { StorageBackend } from "@kepello/nodegraph/storage-contract";
-import { InMemoryBackend } from "@kepello/nodegraph/in-memory";
+import type { StorageBackend } from "@kepello/nodegraph-core/storage-contract";
+import { InMemoryBackend } from "@kepello/nodegraph-core/in-memory";
 import { GraphFederation, CatalogImpl } from "@kepello/nodegraph-federation";
-import type { GraphLayer } from "@kepello/nodegraph";
+import type { GraphLayer } from "@kepello/nodegraph-core";
 
 import { GraphFederationMcpServer } from "../server.js";
 import { registerBuiltinFederationTools } from "../builtin-tools.js";

@@ -12,7 +12,7 @@
  */
 
 import type { ZodRawShape, ZodTypeAny, z } from "zod";
-import type { GraphLayer } from "@kepello/nodegraph";
+import type { GraphLayer } from "@kepello/nodegraph-core";
 
 /**
  * Result a handler returns. Three shapes are accepted:

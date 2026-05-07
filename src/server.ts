@@ -14,7 +14,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { ZodRawShape } from "zod";
-import type { GraphLayer } from "@kepello/nodegraph";
+import type { GraphLayer } from "@kepello/nodegraph-core";
 
 import { wrapError, wrapResult } from "./result.js";
 import type {

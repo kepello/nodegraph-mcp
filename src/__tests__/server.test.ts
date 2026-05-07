@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { GraphLayerImpl } from "@kepello/nodegraph";
-import { InMemoryBackend } from "@kepello/nodegraph/in-memory";
+import { GraphLayerImpl } from "@kepello/nodegraph-core";
+import { InMemoryBackend } from "@kepello/nodegraph-core/in-memory";
 
 import { GraphMcpServer } from "../server.js";
 import { registerBuiltinGraphTools } from "../builtin-tools.js";

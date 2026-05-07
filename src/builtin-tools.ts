@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import type { GraphLayer } from "@kepello/nodegraph";
+import type { GraphLayer } from "@kepello/nodegraph-core";
 import type { GraphMcpServer } from "./server.js";
 
 export interface RegisterBuiltinGraphToolsOptions {

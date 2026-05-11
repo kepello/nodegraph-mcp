@@ -1,6 +1,6 @@
 {
   "name": "@kepello/nodegraph-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP exposure for @kepello/nodegraph: graph-layer tools and federation tools as composable Tool registrations.",
   "type": "module",
   "main": "dist/index.js",
@@ -33,7 +33,7 @@
     "@kepello/nodegraph-federation": "^0.1.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.22.0",
-    "@kepello/nodegraph-core": "^0.5.0"
+    "@kepello/nodegraph-core": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "@kepello/nodegraph-federation": {

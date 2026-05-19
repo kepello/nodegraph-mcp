@@ -20,12 +20,39 @@ export interface RegisterBuiltinGraphToolsOptions {
    */
   prefix?: string;
   /**
-   * Subset of tool names to register. If omitted, all built-ins are
-   * registered. Use to opt out of specific tools (e.g., skip
-   * `delete_node` for read-only servers).
+   * Subset of tool names to register. If omitted, the read-only set
+   * (`get_node` / `query_nodes` / `get_edge` / `query_edges`)
+   * registers by default. Use to add specific tools explicitly.
+   * Mutation tools require `allowDangerousMutations: true`.
    */
   only?: BuiltinGraphToolName[];
+  /**
+   * Fathom row 5.0.40: when `false` (default), raw substrate
+   * mutation tools (`insert_node`, `supersede_node`, `tombstone_node`,
+   * `insert_edge`, `tombstone_edge`) are NOT registered — they bypass
+   * overlay invariants and were the root cause of the 5.0.39 production
+   * bug class. Set `true` only for power-user surfaces (e.g., audit /
+   * judgment domain) that explicitly need free-form substrate writes
+   * and accept responsibility for invariant correctness. Has no effect
+   * when `only` is provided; the explicit list is honored verbatim.
+   */
+  allowDangerousMutations?: boolean;
 }
+
+const READ_ONLY_TOOLS: readonly BuiltinGraphToolName[] = [
+  "get_node",
+  "query_nodes",
+  "get_edge",
+  "query_edges",
+];
+
+const MUTATION_TOOLS: readonly BuiltinGraphToolName[] = [
+  "insert_node",
+  "supersede_node",
+  "tombstone_node",
+  "insert_edge",
+  "tombstone_edge",
+];
 
 export type BuiltinGraphToolName =
   | "insert_node"
@@ -47,19 +74,10 @@ export function registerBuiltinGraphTools<TGraph extends GraphLayer>(
   options: RegisterBuiltinGraphToolsOptions = {},
 ): void {
   const prefix = options.prefix ?? "";
-  const want = new Set<BuiltinGraphToolName>(
-    options.only ?? [
-      "insert_node",
-      "get_node",
-      "query_nodes",
-      "supersede_node",
-      "tombstone_node",
-      "insert_edge",
-      "get_edge",
-      "query_edges",
-      "tombstone_edge",
-    ],
-  );
+  const defaultSet = options.allowDangerousMutations
+    ? [...READ_ONLY_TOOLS, ...MUTATION_TOOLS]
+    : READ_ONLY_TOOLS;
+  const want = new Set<BuiltinGraphToolName>(options.only ?? defaultSet);
 
   if (want.has("insert_node")) {
     server.registerTool({

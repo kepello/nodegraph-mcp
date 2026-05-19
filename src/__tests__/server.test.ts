@@ -38,10 +38,29 @@ test("GraphMcpServer.registerTool rejects duplicate names", () => {
   );
 });
 
-test("registerBuiltinGraphTools registers the default 9 tools", () => {
+test("registerBuiltinGraphTools defaults to READ-ONLY (no substrate mutators) (Fathom 5.0.40)", () => {
+  // Per Fathom row 5.0.40: substrate mutators bypass overlay invariants
+  // (see 5.0.39 for the production bug class this enables). The default
+  // registration is now READ-ONLY — only get/query tools register. Raw
+  // mutation tools are opt-in via `allowDangerousMutations: true` for
+  // power-user surfaces (e.g., audit/judgment domain) that explicitly
+  // need them.
   const graph = new GraphLayerImpl(new InMemoryBackend());
   const server = new GraphMcpServer({ graph });
   registerBuiltinGraphTools(server);
+  const names = server.registeredToolNames().sort();
+  assert.deepEqual(names, [
+    "get_edge",
+    "get_node",
+    "query_edges",
+    "query_nodes",
+  ]);
+});
+
+test("registerBuiltinGraphTools registers mutators when allowDangerousMutations=true (Fathom 5.0.40)", () => {
+  const graph = new GraphLayerImpl(new InMemoryBackend());
+  const server = new GraphMcpServer({ graph });
+  registerBuiltinGraphTools(server, { allowDangerousMutations: true });
   const names = server.registeredToolNames().sort();
   assert.deepEqual(names, [
     "get_edge",

@@ -33,7 +33,7 @@
     "@kepello/nodegraph-federation": "^0.1.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.22.0",
-    "@kepello/nodegraph-core": "^1.0.0"
+    "@kepello/nodegraph-core": "^2.0.0"
   },
   "peerDependenciesMeta": {
     "@kepello/nodegraph-federation": {

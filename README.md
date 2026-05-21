@@ -141,7 +141,7 @@ Handler return values are wrapped automatically: plain objects → JSON-stringif
 
 ### Graph-layer (`registerBuiltinGraphTools`)
 
-`insert_node`, `get_node`, `query_nodes`, `supersede_node`, `tombstone_node`, `insert_edge`, `get_edge`, `query_edges`, `tombstone_edge`.
+`get_node`, `query_nodes`, `get_edge`, `query_edges`. Read-only by design — substrate mutation is the responsibility of authorized overlay writers, not the MCP layer.
 
 ### Federation (`registerBuiltinFederationTools`)
 
@@ -149,8 +149,8 @@ Handler return values are wrapped automatically: plain objects → JSON-stringif
 
 Both registrars accept `{ prefix?, only? }` options:
 
-- `prefix: "kg_"` → tools become `kg_insert_node`, `kg_mount_graph`, etc.
-- `only: ["insert_node", "get_node"]` → register a subset
+- `prefix: "kg_"` → tools become `kg_get_node`, `kg_mount_graph`, etc.
+- `only: ["get_node", "query_edges"]` → register a subset
 
 ## Subpath exports
 

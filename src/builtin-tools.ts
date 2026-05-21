@@ -1,12 +1,21 @@
 /*
- * Built-in graph-layer tools. These operate on a GraphLayer directly
- * with no overlay vocabulary. The set is intentionally small — the
- * value of nodegraph-mcp is the registration API; consumers add their
- * own overlay-specific tools through registerTool().
+ * Built-in graph-layer tools. Read-only by design — substrate mutation
+ * is the exclusive responsibility of authorized overlay writers per
+ * the workspace's overlay-discipline model (Fathom row 5.0.39/40/41
+ * audit; substrate-discipline.test.ts in fathom-cli enforces it).
+ *
+ * Pre-5.0.62: this file also exposed a `MUTATION_TOOLS` set
+ * (`insert_node`, `supersede_node`, `tombstone_node`, `insert_edge`,
+ * `tombstone_edge`) gated behind `allowDangerousMutations: true`.
+ * Eliminated 2026-05-21 (row 5.0.62): the four cases that motivated
+ * cross-domain raw mutation (audit/forensics, migration, power-user,
+ * agent-driven) are either served by overlay-API expansion + storage-
+ * layer internal utilities, or are the antipattern the rule exists to
+ * prevent. No production caller of the gated option existed.
  *
  * Naming: tools are exposed without a prefix by default. Pass a
  * `prefix` option to namespace them (e.g., prefix: "kg_" yields
- * "kg_insert_node", matching bds-v3's existing naming).
+ * "kg_get_node", matching bds-v3's existing naming).
  */
 
 import { z } from "zod";
@@ -16,27 +25,15 @@ import type { GraphMcpServer } from "./server.js";
 export interface RegisterBuiltinGraphToolsOptions {
   /**
    * Prefix prepended to every built-in tool name. Empty by default.
-   * Examples: "kg_" → "kg_insert_node"; "graph." → "graph.insert_node".
+   * Examples: "kg_" → "kg_get_node"; "graph." → "graph.get_node".
    */
   prefix?: string;
   /**
-   * Subset of tool names to register. If omitted, the read-only set
-   * (`get_node` / `query_nodes` / `get_edge` / `query_edges`)
-   * registers by default. Use to add specific tools explicitly.
-   * Mutation tools require `allowDangerousMutations: true`.
+   * Subset of tool names to register. If omitted, all four read-only
+   * tools (`get_node` / `query_nodes` / `get_edge` / `query_edges`)
+   * register by default.
    */
   only?: BuiltinGraphToolName[];
-  /**
-   * Fathom row 5.0.40: when `false` (default), raw substrate
-   * mutation tools (`insert_node`, `supersede_node`, `tombstone_node`,
-   * `insert_edge`, `tombstone_edge`) are NOT registered — they bypass
-   * overlay invariants and were the root cause of the 5.0.39 production
-   * bug class. Set `true` only for power-user surfaces (e.g., audit /
-   * judgment domain) that explicitly need free-form substrate writes
-   * and accept responsibility for invariant correctness. Has no effect
-   * when `only` is provided; the explicit list is honored verbatim.
-   */
-  allowDangerousMutations?: boolean;
 }
 
 const READ_ONLY_TOOLS: readonly BuiltinGraphToolName[] = [
@@ -46,65 +43,25 @@ const READ_ONLY_TOOLS: readonly BuiltinGraphToolName[] = [
   "query_edges",
 ];
 
-const MUTATION_TOOLS: readonly BuiltinGraphToolName[] = [
-  "insert_node",
-  "supersede_node",
-  "tombstone_node",
-  "insert_edge",
-  "tombstone_edge",
-];
-
 export type BuiltinGraphToolName =
-  | "insert_node"
   | "get_node"
   | "query_nodes"
-  | "supersede_node"
-  | "tombstone_node"
-  | "insert_edge"
   | "get_edge"
-  | "query_edges"
-  | "tombstone_edge";
+  | "query_edges";
 
 /**
- * Register the standard set of graph-layer tools on a GraphMcpServer.
- * Each tool is a thin wrapper over a GraphLayer method.
+ * Register the read-only graph-layer tools on a GraphMcpServer. Each
+ * tool is a thin wrapper over a `GraphReader` method (`GraphLayer`
+ * extends `GraphReader`). Substrate mutation is not exposed — consumers
+ * needing to write substrate state register overlay-specific tools
+ * through the overlay's own MCP surface.
  */
 export function registerBuiltinGraphTools<TGraph extends GraphLayer>(
   server: GraphMcpServer<TGraph>,
   options: RegisterBuiltinGraphToolsOptions = {},
 ): void {
   const prefix = options.prefix ?? "";
-  const defaultSet = options.allowDangerousMutations
-    ? [...READ_ONLY_TOOLS, ...MUTATION_TOOLS]
-    : READ_ONLY_TOOLS;
-  const want = new Set<BuiltinGraphToolName>(options.only ?? defaultSet);
-
-  if (want.has("insert_node")) {
-    server.registerTool({
-      name: `${prefix}insert_node`,
-      description:
-        "Insert a node into the graph. Returns the created Node with its assigned id and lifecycleState=live.",
-      inputSchema: {
-        domain: z.string().describe("Domain tag classifying the node."),
-        naturalKey: z
-          .string()
-          .optional()
-          .describe(
-            "Optional caller-stable identifier; unique per (domain, lifecycleState=live).",
-          ),
-        metadata: z
-          .unknown()
-          .optional()
-          .describe("Opaque domain-typed metadata blob."),
-      },
-      handler: ({ input, graph }) =>
-        graph.insertNode({
-          domain: input.domain,
-          naturalKey: input.naturalKey,
-          metadata: input.metadata,
-        }),
-    });
-  }
+  const want = new Set<BuiltinGraphToolName>(options.only ?? READ_ONLY_TOOLS);
 
   if (want.has("get_node")) {
     server.registerTool({
@@ -134,60 +91,6 @@ export function registerBuiltinGraphTools<TGraph extends GraphLayer>(
         q.lifecycleState = input.lifecycleState ?? "live";
         return graph.queryNodes(q);
       },
-    });
-  }
-
-  if (want.has("supersede_node")) {
-    server.registerTool({
-      name: `${prefix}supersede_node`,
-      description:
-        "Replace an existing node with a new live version. The prior node becomes superseded; the new node carries supersedesNodeId pointing at it.",
-      inputSchema: {
-        priorNodeId: z.string(),
-        metadata: z.unknown().optional(),
-      },
-      handler: ({ input, graph }) =>
-        graph.supersedeNode(input.priorNodeId, {
-          metadata: input.metadata,
-        }),
-    });
-  }
-
-  if (want.has("tombstone_node")) {
-    server.registerTool({
-      name: `${prefix}tombstone_node`,
-      description:
-        "Tombstone a node (lifecycleState → tombstoned). The row remains for audit but is excluded from default queries.",
-      inputSchema: {
-        id: z.string(),
-      },
-      handler: ({ input, graph }) => {
-        graph.tombstoneNode(input.id);
-        return { tombstoned: input.id };
-      },
-    });
-  }
-
-  if (want.has("insert_edge")) {
-    server.registerTool({
-      name: `${prefix}insert_edge`,
-      description:
-        "Insert an edge between two nodes. Target may be specified by id (targetId) or natural-key form (targetRef).",
-      inputSchema: {
-        type: z.string().describe("Edge type vocabulary owned by the consumer."),
-        sourceId: z.string(),
-        targetId: z.string().optional(),
-        targetRef: z.string().optional(),
-        metadata: z.unknown().optional(),
-      },
-      handler: ({ input, graph }) =>
-        graph.insertEdge({
-          type: input.type,
-          sourceId: input.sourceId,
-          targetId: input.targetId,
-          targetRef: input.targetRef,
-          metadata: input.metadata,
-        }),
     });
   }
 
@@ -221,20 +124,6 @@ export function registerBuiltinGraphTools<TGraph extends GraphLayer>(
         if (input.targetId !== undefined) q.targetId = input.targetId;
         q.lifecycleState = input.lifecycleState ?? "live";
         return graph.queryEdges(q);
-      },
-    });
-  }
-
-  if (want.has("tombstone_edge")) {
-    server.registerTool({
-      name: `${prefix}tombstone_edge`,
-      description: "Tombstone an edge.",
-      inputSchema: {
-        id: z.string(),
-      },
-      handler: ({ input, graph }) => {
-        graph.tombstoneEdge(input.id);
-        return { tombstoned: input.id };
       },
     });
   }

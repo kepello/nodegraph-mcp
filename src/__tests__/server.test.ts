@@ -38,13 +38,14 @@ test("GraphMcpServer.registerTool rejects duplicate names", () => {
   );
 });
 
-test("registerBuiltinGraphTools defaults to READ-ONLY (no substrate mutators) (Fathom 5.0.40)", () => {
-  // Per Fathom row 5.0.40: substrate mutators bypass overlay invariants
-  // (see 5.0.39 for the production bug class this enables). The default
-  // registration is now READ-ONLY — only get/query tools register. Raw
-  // mutation tools are opt-in via `allowDangerousMutations: true` for
-  // power-user surfaces (e.g., audit/judgment domain) that explicitly
-  // need them.
+test("registerBuiltinGraphTools registers exactly the four read-only tools (Fathom 5.0.62)", () => {
+  // Per Fathom row 5.0.62: substrate mutators are NEVER exposed by
+  // this package. The four cases that motivated cross-domain raw
+  // mutation (audit/forensics, migration, power-user, agent-driven)
+  // are either served by overlay-API expansion + storage-layer
+  // internal utilities, or are the antipattern the overlay-discipline
+  // rule exists to prevent. Pre-5.0.62 row 5.0.40 had gated them
+  // behind `allowDangerousMutations: true`; the gate is now deletion.
   const graph = new GraphLayerImpl(new InMemoryBackend());
   const server = new GraphMcpServer({ graph });
   registerBuiltinGraphTools(server);
@@ -54,24 +55,6 @@ test("registerBuiltinGraphTools defaults to READ-ONLY (no substrate mutators) (F
     "get_node",
     "query_edges",
     "query_nodes",
-  ]);
-});
-
-test("registerBuiltinGraphTools registers mutators when allowDangerousMutations=true (Fathom 5.0.40)", () => {
-  const graph = new GraphLayerImpl(new InMemoryBackend());
-  const server = new GraphMcpServer({ graph });
-  registerBuiltinGraphTools(server, { allowDangerousMutations: true });
-  const names = server.registeredToolNames().sort();
-  assert.deepEqual(names, [
-    "get_edge",
-    "get_node",
-    "insert_edge",
-    "insert_node",
-    "query_edges",
-    "query_nodes",
-    "supersede_node",
-    "tombstone_edge",
-    "tombstone_node",
   ]);
 });
 
@@ -90,11 +73,11 @@ test("registerBuiltinGraphTools honors only-list", () => {
   const graph = new GraphLayerImpl(new InMemoryBackend());
   const server = new GraphMcpServer({ graph });
   registerBuiltinGraphTools(server, {
-    only: ["insert_node", "get_node"],
+    only: ["query_edges", "get_node"],
   });
   assert.deepEqual(
     server.registeredToolNames().sort(),
-    ["get_node", "insert_node"],
+    ["get_node", "query_edges"],
   );
 });
 

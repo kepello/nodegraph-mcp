@@ -30,6 +30,52 @@ export function wrapResult(
 }
 
 /**
+ * Wraps a handler's return value with additional `_meta` fields injected
+ * into the serialized payload. Used to surface observable recovery signals
+ * (e.g. `storeReopened: true`) per the no-silent-degradation rule
+ * (Fathom row 5.0.101 `mcp-cluster-overlay-staleness`).
+ *
+ * When the value is already a `CallToolResult` (pre-built content array),
+ * the content is left unchanged — the MCP envelope is treated as opaque.
+ * For plain objects, `_meta` is merged in at the top level.
+ */
+export function wrapResultWithMeta(
+  value: GraphToolHandlerResult,
+  meta: Record<string, unknown>,
+): McpCallToolResult {
+  if (isCallToolResult(value)) {
+    // Pre-built CallToolResult — we can't safely inject _meta into the
+    // content array without knowing its schema. Return as-is; the caller
+    // already surfaces the signal via its own envelope path.
+    return value;
+  }
+  if (typeof value === "string") {
+    // Plain string — wrap as JSON object with _meta attached.
+    return {
+      content: [
+        { type: "text", text: JSON.stringify({ result: value, _meta: meta }, null, 2) },
+      ],
+    };
+  }
+  // Plain object — merge _meta at the top level.
+  let enriched: Record<string, unknown>;
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    const existingMeta = typeof obj["_meta"] === "object" && obj["_meta"] !== null
+      ? (obj["_meta"] as Record<string, unknown>)
+      : {};
+    enriched = { ...obj, _meta: { ...existingMeta, ...meta } };
+  } else {
+    enriched = { result: value, _meta: meta };
+  }
+  return {
+    content: [
+      { type: "text", text: JSON.stringify(enriched, null, 2) },
+    ],
+  };
+}
+
+/**
  * Wraps a thrown error into an MCP CallToolResult with isError: true.
  * Preserves common error properties (name, message). The MCP SDK
  * surfaces these to the client.

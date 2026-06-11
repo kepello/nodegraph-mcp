@@ -16,7 +16,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { ZodRawShape } from "zod";
 import type { GraphLayer } from "@kepello/nodegraph-core";
 
-import { wrapError, wrapResult } from "./result.js";
+import { wrapError, wrapResult, wrapResultWithMeta } from "./result.js";
 import type {
   GraphToolDefinition,
   ShapeInput,
@@ -78,10 +78,20 @@ export class GraphMcpServer<TGraph extends GraphLayer = GraphLayer> {
 
     // The SDK callback receives `(args, extra)`. We ignore extra; the
     // handler API exposes only what consumers need (input + graph).
+    // Before each tool handler runs, call `ensureStoreCurrent()` to
+    // detect and recover from out-of-process store replacement (inode
+    // swap — Fathom row 5.0.101 `mcp-cluster-overlay-staleness`). One
+    // `statSync` per call — cheap. When a reopen fired, surface the
+    // observable `_meta.storeReopened: true` flag on the response per
+    // the no-silent-degradation rule.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cb: any = async (input: ShapeInput<TShape>) => {
       try {
+        const storeReopened = this.graph.ensureStoreCurrent();
         const result = await def.handler({ input, graph: this.graph });
+        if (storeReopened) {
+          return wrapResultWithMeta(result, { storeReopened: true });
+        }
         return wrapResult(result);
       } catch (err) {
         return wrapError(err);

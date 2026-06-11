@@ -2,6 +2,22 @@
 
 All notable changes to `@kepello/nodegraph-mcp`. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] — 2026-06-11
+
+`GraphMcpServer.registerTool` calls `ensureStoreCurrent()` before every tool handler and surfaces `_meta.storeReopened: true` when a reopen fired (Fathom row 5.0.101 `mcp-cluster-overlay-staleness`). One `statSync` per call in `storeReplaced()` — cheap. Exports `wrapResultWithMeta` for the observable recovery signal.
+
+### Added
+
+- **`wrapResultWithMeta(value, meta)`** — wraps a handler's return value as `wrapResult` does, plus merges `meta` fields into the top-level `_meta` key. Used by `registerTool` to attach `storeReopened: true` on responses where a reopen fired. Handles plain objects (merge), strings (wrap as `{result, _meta}`), and pre-built `CallToolResult` (pass through unchanged — treated as opaque).
+
+### Changed
+
+- **`registerTool` handler wrapper** — calls `graph.ensureStoreCurrent()` before invoking the handler; when it returns `true`, wraps the response with `_meta.storeReopened: true` so upstream consumers can surface the recovery signal.
+
+### Tests
+
+6 new tests in `src/__tests__/store-reopen-meta.test.ts`: `wrapResultWithMeta` plain-object, existing-_meta, string-wrap, CallToolResult passthrough; `ensureStoreCurrent` returns true when storeReplaced; returns false on normal path. 25/25 pass (was 19/19).
+
 ## [1.0.0] — 2026-05-21
 
 **Breaking** — substrate-mutation tools removed entirely. Closes Fathom row 5.0.62.

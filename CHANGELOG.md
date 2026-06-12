@@ -2,6 +2,19 @@
 
 All notable changes to `@kepello/nodegraph-mcp`. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] — 2026-06-11
+
+Two observability fixes from Fathom row 5.0.101 follow-up review (F3 + F4). `wrapResultWithMeta` was silently dropping `_meta.storeReopened` for pre-built `CallToolResult` envelopes (NSD gap — F4). The F3 regression test was calling `graph.ensureStoreCurrent()` directly, skipping the `server.ts` handler wiring it was supposed to pin.
+
+### Fixed
+
+- **F4 — `wrapResultWithMeta` now injects `_meta` into pre-built `CallToolResult` envelopes** — previously returned the value unchanged, silently dropping `storeReopened: true`. Now merges `meta` into the top-level `_meta` field (existing `_meta` is merged, not replaced). `McpCallToolResult` interface gains `_meta?: Record<string, unknown>` to reflect the MCP spec field.
+- **F3 — store-reopen e2e test now exercises the full SDK transport path** — replaced the direct `graph.ensureStoreCurrent()` call with `InMemoryTransport.createLinkedPair()` + `Client.callTool()`, so the test actually traverses the `server.ts:90` handler wrapper. Test forces `storeReplaced=true`, calls the tool, parses `content[0].text`, and asserts `_meta.storeReopened === true`.
+
+### Tests
+
+`src/__tests__/store-reopen-meta.test.ts` replaces 2 tests (passthrough + direct-call) with 3 new ones: (a) pre-built `CallToolResult` gets `_meta.storeReopened` injected (F4); (b) pre-built `CallToolResult` with existing `_meta` gets `storeReopened` merged — not lost (F4 merge); (c) full SDK-transport e2e — `client.callTool()` drives the handler, `_meta.storeReopened=true` observed in the parsed response (F3). RED witnessed: F4 test failed because `_meta` was absent; F3 test was vacuously passing the old direct call. 26/26 pass (was 25/25, net +1).
+
 ## [1.1.0] — 2026-06-11
 
 `GraphMcpServer.registerTool` calls `ensureStoreCurrent()` before every tool handler and surfaces `_meta.storeReopened: true` when a reopen fired (Fathom row 5.0.101 `mcp-cluster-overlay-staleness`). One `statSync` per call in `storeReplaced()` — cheap. Exports `wrapResultWithMeta` for the observable recovery signal.

@@ -34,6 +34,13 @@ export interface McpTextContent {
 export interface McpCallToolResult {
   content: McpTextContent[];
   isError?: boolean;
+  /**
+   * Top-level envelope metadata per MCP spec. Used to surface observable
+   * recovery signals (e.g., `storeReopened: true`) for pre-built results
+   * that don't go through the plain-object JSON serialization path.
+   * Fathom row 5.0.101 F4 — no-silent-degradation for pre-built envelopes.
+   */
+  _meta?: Record<string, unknown>;
 }
 
 // ---------- Graph-layer tool shapes ----------

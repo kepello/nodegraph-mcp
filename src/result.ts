@@ -44,10 +44,15 @@ export function wrapResultWithMeta(
   meta: Record<string, unknown>,
 ): McpCallToolResult {
   if (isCallToolResult(value)) {
-    // Pre-built CallToolResult — we can't safely inject _meta into the
-    // content array without knowing its schema. Return as-is; the caller
-    // already surfaces the signal via its own envelope path.
-    return value;
+    // Pre-built CallToolResult — inject `_meta` at the top level of the
+    // envelope (MCP spec supports a top-level `_meta` field on CallToolResult).
+    // The `content` array is left untouched; the signal is surfaced via the
+    // envelope `_meta` per the no-silent-degradation rule (Fathom 5.0.101 F4).
+    // Previously this returned the value unchanged — that was a NSD gap.
+    const existingMeta = typeof value._meta === "object" && value._meta !== null
+      ? value._meta
+      : {};
+    return { ...value, _meta: { ...existingMeta, ...meta } };
   }
   if (typeof value === "string") {
     // Plain string — wrap as JSON object with _meta attached.
